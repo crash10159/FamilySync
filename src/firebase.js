@@ -8,6 +8,6 @@ const firebaseConfig = {
   apiKey: "AIzaSyB_KUlv3qYYo8SIhCuVP12EqRyy2GNAbUw",
   authDomain: "familysync-223f3.firebaseapp.com",
   projectId: "familysync-223f3",
-  storageBucket: "familysync-223f3.firebasestorage.app",
-  messagingSenderId: "716995619071",
-  appId: "1:716995619071:android:aea7
+  storageBucket:
+git add . && git commit -m "fix firebase config" && git push
+EAS_SKIP_AUTO_FINGERPRINT=1 eas build -p android --profile preview
