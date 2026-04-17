@@ -7,17 +7,6 @@ import { generateFamilyCode } from '../utils/familyCode';
 
 export default function SignupScreen({ navigation }) {
   const [name, setName] = useState('');
-  const [email, setEmail] = useSta
-cat > src/screens/SignupScreen.js << 'EOF'
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { setDoc, doc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../firebase';
-import { generateFamilyCode } from '../utils/familyCode';
-
-export default function SignupScreen({ navigation }) {
-  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -36,32 +25,31 @@ export default function SignupScreen({ navigation }) {
       await setDoc(doc(db, 'users', uid), { uid, name: name.trim(), email: email.trim(), familyCode, families: [], createdAt: serverTimestamp() });
     } catch (error) {
       let message = 'Something went wrong.';
-      if (error.code === 'auth/email-already-in-use') message = 'That email is already registered.';
-      else if (error.code === 'auth/invalid-email') message = 'Please enter a valid email.';
-      else if (error.code === 'auth/weak-password') message = 'Password is too weak.';
+      if (error.code === "auth/email-already-in-use") message = "That email is already registered.";
+      else if (error.code === "auth/invalid-email") message = "Please enter a valid email.";
+      else if (error.code === "auth/weak-password") message = "Password is too weak.";
       Alert.alert('Signup Failed', message);
     } finally { setLoading(false); }
   };
 
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps='handled'>
         <View style={styles.header}>
-          <Text style={styles.logo}>👨‍👩‍👧‍👦</Text>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Join FamilySync today</Text>
+          <Text style={styles.title}>FamilySync</Text>
+          <Text style={styles.subtitle}>Create your account</Text>
         </View>
         <View style={styles.form}>
           <Text style={styles.label}>Full Name</Text>
-          <TextInput style={styles.input} placeholder="Jane Smith" placeholderTextColor="#aaa" value={name} onChangeText={setName} editable={!loading} />
+          <TextInput style={styles.input} placeholder='Jane Smith' placeholderTextColor='#aaa' value={name} onChangeText={setName} editable={!loading} />
           <Text style={styles.label}>Email</Text>
-          <TextInput style={styles.input} placeholder="you@example.com" placeholderTextColor="#aaa" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" editable={!loading} />
+          <TextInput style={styles.input} placeholder='you@example.com' placeholderTextColor='#aaa' value={email} onChangeText={setEmail} autoCapitalize='none' keyboardType='email-address' editable={!loading} />
           <Text style={styles.label}>Password</Text>
-          <TextInput style={styles.input} placeholder="At least 6 characters" placeholderTextColor="#aaa" value={password} onChangeText={setPassword} secureTextEntry editable={!loading} />
+          <TextInput style={styles.input} placeholder='At least 6 characters' placeholderTextColor='#aaa' value={password} onChangeText={setPassword} secureTextEntry editable={!loading} />
           <Text style={styles.label}>Confirm Password</Text>
-          <TextInput style={styles.input} placeholder="Repeat your password" placeholderTextColor="#aaa" value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry editable={!loading} />
+          <TextInput style={styles.input} placeholder='Repeat your password' placeholderTextColor='#aaa' value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry editable={!loading} />
           <TouchableOpacity style={[styles.button, loading && styles.buttonDisabled]} onPress={handleSignup} disabled={loading}>
-            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Create Account</Text>}
+            {loading ? <ActivityIndicator color='#fff' /> : <Text style={styles.buttonText}>Create Account</Text>}
           </TouchableOpacity>
         </View>
         <View style={styles.footer}>
@@ -79,7 +67,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: '#fff' },
   container: { flexGrow: 1, paddingHorizontal: 24, justifyContent: 'center', paddingVertical: 40 },
   header: { alignItems: 'center', marginBottom: 36 },
-  logo: { fontSize: 52, marginBottom: 12 },
   title: { fontSize: 30, fontWeight: 'bold', color: '#007AFF', marginBottom: 6 },
   subtitle: { fontSize: 15, color: '#666' },
   form: { marginBottom: 28 },
