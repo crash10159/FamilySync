@@ -17,20 +17,13 @@ export default function ListsScreen() {
   useEffect(() => {
     if (!uid) return;
     const q = query(collection(db, 'lists'), where('members', 'array-contains', uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setLists(data);
-    });
-    return unsubscribe;
+    return onSnapshot(q, snap => setLists(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [uid]);
 
   useEffect(() => {
     if (!selectedList) return;
     const q = query(collection(db, 'lists', selectedList.id, 'items'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      setItems(snapshot.docs.map(d => ({ id: d.id, ...d.data() })));
-    });
-    return unsubscribe;
+    return onSnapshot(q, snap => setItems(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
   }, [selectedList]);
 
   const handleCreateList = async () => {
@@ -39,8 +32,97 @@ export default function ListsScreen() {
     try {
       await addDoc(collection(db, 'lists'), { title: newListName.trim(), createdBy: uid, members: [uid], createdAt: serverTimestamp() });
       setNewListName('');
-    } catch (e) { Alert.alert('Error', e.message); } finally { setLoading(false); }
+    } catch (e) { Alert.alert('Error', e.message); }
+    setLoading(false);
   };
 
-  const handleDeleteList = (listId) => {
-    Alert.alert('Delete List', 'Are you sure?', [{ text: 'Cancel', style: 'cancel' }, { text
+  const handleDeleteList = async (listId) => {
+    Alert.alert('Delete List', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+        try { await deleteDoc(doc(db, 'lists', listId)); }
+        catch (e) { Alert.alert('Error', e.message); }
+      }}
+    ]);
+  };
+
+  const handleAddItem = async () => {
+    if (!newItemText.trim() || !selectedList) return;
+    try {
+      await addDoc(collection(db, 'lists', selectedList.id, 'items'), { text: newItemText.trim(), checked: false, createdBy: uid, createdAt: serverTimestamp() });
+      setNewItemText('');
+    } catch (e) { Alert.alert('Error', e.message); }
+  };
+
+  const handleToggleItem = async (item) => {
+    try { await updateDoc(doc(db, 'lists', selectedList.id, 'items', item.id), { checked: !item.checked }); }
+    catch (e) { Alert.alert('Error', e.message); }
+  };
+
+  const handleDeleteItem = async (itemId) => {
+    try { await deleteDoc(doc(db, 'lists', selectedList.id, 'items', itemId)); }
+    catch (e) { Alert.alert('Error', e.message); }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.inputRow}>
+        <TextInput style={styles.input} placeholder='New list name...' placeholderTextColor='#aaa' value={newListName} onChangeText={setNewListName} onSubmitEditing={handleCreateList} returnKeyType='done' />
+        <TouchableOpacity style={styles.addButton} onPress={handleCreateList} disabled={loading}>
+          {loading ? <ActivityIndicator color='#fff' size='small' /> : <Ionicons name='add' size={24} color='#fff' />}
+        </TouchableOpacity>
+      </View>
+      <FlatList data={lists} keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity style={styles.listItem} onPress={() => { setSelectedList(item); setModalVisible(true); }}>
+            <View style={styles.listLeft}><Ionicons name='list' size={22} color='#007AFF' /><Text style={styles.listTitle}>{item.title}</Text></View>
+            <TouchableOpacity onPress={() => handleDeleteList(item.id)}><Ionicons name='trash-outline' size={20} color='#FF3B30' /></TouchableOpacity>
+          </TouchableOpacity>
+        )}
+        ListEmptyComponent={<Text style={styles.emptyText}>No lists yet!</Text>}
+      />
+      <Modal visible={modalVisible} animationType='slide' presentationStyle='pageSheet'>
+        <View style={styles.modal}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{selectedList?.title}</Text>
+            <TouchableOpacity onPress={() => { setModalVisible(false); setSelectedList(null); }}><Ionicons name='close' size={28} color='#333' /></TouchableOpacity>
+          </View>
+          <View style={styles.inputRow}>
+            <TextInput style={styles.input} placeholder='Add item...' placeholderTextColor='#aaa' value={newItemText} onChangeText={setNewItemText} onSubmitEditing={handleAddItem} returnKeyType='done' />
+            <TouchableOpacity style={styles.addButton} onPress={handleAddItem}><Ionicons name='add' size={24} color='#fff' /></TouchableOpacity>
+          </View>
+          <FlatList data={items} keyExtractor={item => item.id}
+            renderItem={({ item }) => (
+              <View style={styles.itemRow}>
+                <TouchableOpacity onPress={() => handleToggleItem(item)} style={styles.itemLeft}>
+                  <Ionicons name={item.checked ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={item.checked ? '#34C759' : '#ccc'} />
+                  <Text style={[styles.itemText, item.checked && styles.itemChecked]}>{item.text}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handleDeleteItem(item.id)}><Ionicons name='trash-outline' size={18} color='#FF3B30' /></TouchableOpacity>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={styles.emptyText}>No items yet.</Text>}
+          />
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f2f2f7', padding: 16 },
+  inputRow: { flexDirection: 'row', marginBottom: 16, gap: 10 },
+  input: { flex: 1, borderWidth: 1, borderColor: '#ddd', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, backgroundColor: '#fff', fontSize: 15, color: '#222' },
+  addButton: { backgroundColor: '#007AFF', borderRadius: 10, width: 46, height: 46, justifyContent: 'center', alignItems: 'center' },
+  listItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 14, marginBottom: 10, elevation: 2 },
+  listLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  listTitle: { fontSize: 16, fontWeight: '500', color: '#222' },
+  emptyText: { textAlign: 'center', color: '#aaa', fontSize: 15, marginTop: 40 },
+  modal: { flex: 1, backgroundColor: '#f2f2f7', padding: 16 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingTop: 8 },
+  modalTitle: { fontSize: 22, fontWeight: 'bold', color: '#222' },
+  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 8 },
+  itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  itemText: { fontSize: 15, color: '#222', flex: 1 },
+  itemChecked: { textDecorationLine: 'line-through', color: '#aaa' },
+});
