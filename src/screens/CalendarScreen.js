@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, TextInput, ScrollView } from 'react-native';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -10,6 +10,7 @@ const COLORS = ['#007AFF','#FF3B30','#34C759','#FF9500','#AF52DE','#00C7BE'];
 
 export default function CalendarScreen() {
   const [events, setEvents] = useState([]);
+  const [familyId, setFamilyId] = useState(null);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -21,9 +22,14 @@ export default function CalendarScreen() {
 
   useEffect(() => {
     if (!uid) return;
-    const q = query(collection(db, 'events'), where('members','array-contains',uid));
-    return onSnapshot(q, snap => setEvents(snap.docs.map(d => ({id:d.id,...d.data()}))));
+    getDoc(doc(db, 'users', uid)).then(snap => { if (snap.exists()) setFamilyId(snap.data().familyId); });
   }, [uid]);
+
+  useEffect(() => {
+    if (!familyId) return;
+    const q = query(collection(db, 'events'), where('familyId', '==', familyId));
+    return onSnapshot(q, snap => setEvents(snap.docs.map(d => ({id:d.id,...d.data()}))));
+  }, [familyId]);
 
   const toStr = (y,m,d) => y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
   const todayStr = toStr(today.getFullYear(),today.getMonth(),today.getDate());
@@ -38,7 +44,7 @@ export default function CalendarScreen() {
   const handleAdd = async () => {
     if (!eventTitle.trim()) { Alert.alert('Missing','Enter event title'); return; }
     try {
-      await addDoc(collection(db,'events'), { title:eventTitle.trim(), date:selected, color:eventColor, createdBy:uid, members:[uid], createdAt:serverTimestamp() });
+      await addDoc(collection(db,'events'), { title:eventTitle.trim(), date:selected, color:eventColor, createdBy:uid, familyId, createdAt:serverTimestamp() });
       setModal(false); setEventTitle('');
     } catch(e) { Alert.alert('Error',e.message); }
   };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -9,6 +9,7 @@ const TAG_COLORS = { personal:'#FF9500', family:'#007AFF', work:'#34C759', impor
 
 export default function NotesScreen() {
   const [notes, setNotes] = useState([]);
+  const [familyId, setFamilyId] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [title, setTitle] = useState('');
@@ -18,12 +19,17 @@ export default function NotesScreen() {
 
   useEffect(() => {
     if (!uid) return;
-    const q = query(collection(db, 'notes'), where('members', 'array-contains', uid));
+    getDoc(doc(db, 'users', uid)).then(snap => { if (snap.exists()) setFamilyId(snap.data().familyId); });
+  }, [uid]);
+
+  useEffect(() => {
+    if (!familyId) return;
+    const q = query(collection(db, 'notes'), where('familyId', '==', familyId));
     return onSnapshot(q, snap => {
       const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       setNotes(data.sort((a,b) => (b.updatedAt?.seconds||0)-(a.updatedAt?.seconds||0)));
     });
-  }, [uid]);
+  }, [familyId]);
 
   const openNew = () => { setEditingNote(null); setTitle(''); setBody(''); setTag('personal'); setModalVisible(true); };
   const openEdit = (note) => { setEditingNote(note); setTitle(note.title); setBody(note.body||''); setTag(note.tag||'personal'); setModalVisible(true); };
@@ -34,7 +40,7 @@ export default function NotesScreen() {
       if (editingNote) {
         await updateDoc(doc(db, 'notes', editingNote.id), { title: title.trim(), body: body.trim(), tag, updatedAt: serverTimestamp() });
       } else {
-        await addDoc(collection(db, 'notes'), { title: title.trim(), body: body.trim(), tag, createdBy: uid, members: [uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        await addDoc(collection(db, 'notes'), { title: title.trim(), body: body.trim(), tag, createdBy: uid, familyId, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
       }
       setModalVisible(false);
     } catch (e) { Alert.alert('Error', e.message); }

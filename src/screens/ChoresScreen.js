@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Alert, Modal, ScrollView } from 'react-native';
-import { collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, addDoc, deleteDoc, updateDoc, doc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import Ionicons from '@expo/vector-icons/Ionicons';
 
@@ -9,6 +9,7 @@ const PRI = {low:'#34C759',medium:'#FF9500',high:'#FF3B30'};
 
 export default function ChoresScreen() {
   const [chores, setChores] = useState([]);
+  const [familyId, setFamilyId] = useState(null);
   const [modal, setModal] = useState(false);
   const [choreName, setChoreName] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
@@ -19,17 +20,22 @@ export default function ChoresScreen() {
 
   useEffect(() => {
     if (!uid) return;
-    const q = query(collection(db,'chores'),where('members','array-contains',uid));
+    getDoc(doc(db, 'users', uid)).then(snap => { if (snap.exists()) setFamilyId(snap.data().familyId); });
+  }, [uid]);
+
+  useEffect(() => {
+    if (!familyId) return;
+    const q = query(collection(db,'chores'),where('familyId','==',familyId));
     return onSnapshot(q, snap => {
       const data = snap.docs.map(d=>({id:d.id,...d.data()}));
       setChores(data.sort((a,b)=>a.done===b.done?0:a.done?1:-1));
     });
-  }, [uid]);
+  }, [familyId]);
 
   const handleAdd = async () => {
     if (!choreName.trim()) { Alert.alert('Missing','Enter a chore name'); return; }
     try {
-      await addDoc(collection(db,'chores'),{name:choreName.trim(),assignedTo:assignedTo.trim()||'Unassigned',frequency:freq,priority,done:false,createdBy:uid,members:[uid],createdAt:serverTimestamp()});
+      await addDoc(collection(db,'chores'),{name:choreName.trim(),assignedTo:assignedTo.trim()||'Unassigned',frequency:freq,priority,done:false,createdBy:uid,familyId,createdAt:serverTimestamp()});
       setChoreName(''); setAssignedTo(''); setFreq('Weekly'); setPriority('medium'); setModal(false);
     } catch(e){Alert.alert('Error',e.message);}
   };
